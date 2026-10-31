@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>CloudFlare 优选 IP 扫描器</title>
+    <link
+      rel="stylesheet"
+      href="style.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="head-row">
+        <h1>☁️ Cloudflare 优选 IP 扫描器</h1>
+        <button
+          id="btnSettings"
+          class="btn btn-plain"
+        >
+          ⚙ 设置
+        </button>
+      </div>
+      <p class="subtitle">IPv4 / IPv6 | 地区优选 | 结果导出 | 节点批量生成</p>
+
+      <div class="config-panel">
+        <div class="btn-row">
+          <button
+            id="btnV4"
+            class="btn btn-primary"
+          >
+            IPv4 扫描
+          </button>
+          <button
+            id="btnV6"
+            class="btn btn-green"
+          >
+            IPv6 扫描
+          </button>
+          <button
+            id="btnStop"
+            class="btn btn-danger"
+            disabled
+          >
+            停止
+          </button>
+          <button
+            id="btnRegion"
+            class="btn btn-plain"
+            disabled
+          >
+            地区测速
+          </button>
+          <button
+            id="btnFull"
+            class="btn btn-plain"
+            disabled
+          >
+            完全测速
+          </button>
+          <button
+            id="btnExport"
+            class="btn btn-plain"
+            disabled
+          >
+            导出结果
+          </button>
+        </div>
+        <div class="input-row">
+          <label
+            >地区
+            <select
+              id="regionSel"
+              style="width: 190px"
+            >
+              <option value="">(扫描后获取)</option>
+            </select>
+          </label>
+          <label
+            >测速数量<input
+              id="speedCount"
+              type="number"
+              value="10"
+              min="1"
+              max="500"
+          /></label>
+          <label
+            >端口
+            <select id="portSel">
+              <option>443</option>
+              <option>80</option>
+              <option>8080</option>
+              <option>8443</option>
+              <option>2052</option>
+              <option>2053</option>
+              <option>2082</option>
+              <option>2083</option>
+              <option>2086</option>
+              <option>2087</option>
+              <option>2095</option>
+              <option>2096</option>
+            </select>
+          </label>
+          <label class="chk-label"
+            ><input
+              type="checkbox"
+              id="chkConcurrent"
+            />
+            并发测速
+          </label>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div
+          class="phase"
+          id="phaseText"
+        >
+          就绪
+        </div>
+        <div class="progress-wrap">
+          <div
+            id="progressBar"
+            class="progress-bar"
+          ></div>
+        </div>
+        <div class="stats">
+          <span>进度: <strong id="progressNum">0/0</strong></span>
+          <span
+            >可用:
+            <strong
+              id="aliveNum"
+              class="text-green"
+              >0</strong
+            ></span
+          >
+          <span>速度: <strong id="rateNum">0</strong> IP/秒</span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button
+          class="tab-btn active"
+          data-tab="speed"
+        >
+          🏆 测速结果
+        </button>
+        <button
+          class="tab-btn"
+          data-tab="ping"
+        >
+          ⚡ Ping 列表
+        </button>
+        <button
+          class="tab-btn"
+          data-tab="nodes"
+        >
+          📦 节点生成
+        </button>
+        <button
+          class="tab-btn"
+          data-tab="logs"
+        >
+          📋 运行日志
+        </button>
+      </div>
+
+      <div
+        class="tab-content active"
+        id="tab-speed"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>IP 地址</th>
+              <th>端口</th>
+              <th>地区</th>
+              <th>延迟</th>
+              <th>速度 (MB/s)</th>
+            </tr>
+          </thead>
+          <tbody id="speedBody"></tbody>
+        </table>
+      </div>
+      <div
+        class="tab-content"
+        id="tab-ping"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>IP 地址</th>
+              <th>真实 TCP 延迟</th>
+            </tr>
+          </thead>
+          <tbody id="pingBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 节点批量生成 -->
+      <div
+        class="tab-content"
+        id="tab-nodes"
+      >
+        <div class="node-grid">
+          <div>
+            <label class="fld">原始节点（VLESS / VMess 混合，每行一个）</label>
+            <textarea
+              id="srcNodes"
+              rows="7"
+              placeholder="vless://uuid@host:port?encryption=none&security=tls&sni=xxx&type=tcp#名称&#10;vmess://eyJhZGQiOi..."
+            ></textarea>
+          </div>
+          <div>
+            <label class="fld">目标地址列表（每行一个）</label>
+            <textarea
+              id="addrList"
+              rows="7"
+              placeholder="104.18.44.179:443#SIN 新加坡&#10;172.64.147.192#HKG&#10;[2606:4700::1]:443#US 洛杉矶&#10;cf.example.com:443#官方域名"
+            ></textarea>
+            <div class="btn-row small">
+              <button
+                id="btnImportRes"
+                class="btn btn-plain"
+              >
+                ⬇ 导入优选IP结果
+              </button>
+              <button
+                id="btnPreview"
+                class="btn btn-plain"
+              >
+                🔍 预览地址解析
+              </button>
+            </div>
+            <pre
+              id="previewBox"
+              class="preview hidden"
+            ></pre>
+          </div>
+        </div>
+        <div class="checks">
+          <label
+            ><input
+              type="checkbox"
+              id="chkKeepSNI"
+              checked
+            />
+            保持 SNI/Host 不变（优选IP必选）</label
+          >
+          <label
+            ><input
+              type="checkbox"
+              id="chkForceSNI"
+            />
+            强制同步 SNI/Host 为新地址（仅限域名→域名）</label
+          >
+          <label
+            ><input
+              type="checkbox"
+              id="chkRawName"
+            />
+            VLESS 节点名称不编码（兼容旧客户端）</label
+          >
+        </div>
+        <div class="btn-row">
+          <button
+            id="btnGen"
+            class="btn btn-primary"
+          >
+            ⚡ 生成
+          </button>
+          <button
+            id="btnCopyUri"
+            class="btn btn-plain"
+          >
+            📋 复制 URI
+          </button>
+          <button
+            id="btnCopyB64"
+            class="btn btn-plain"
+          >
+            📦 复制 Base64
+          </button>
+          <button
+            id="btnClearNodes"
+            class="btn btn-plain"
+          >
+            🗑️ 清空
+          </button>
+        </div>
+        <label class="fld">生成结果（<span id="genCount">0</span> 条）</label>
+        <textarea
+          id="outNodes"
+          rows="8"
+          readonly
+        ></textarea>
+      </div>
+
+      <div
+        class="tab-content"
+        id="tab-logs"
+      >
+        <div
+          id="logArea"
+          class="log-box"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div
+      id="modal"
+      class="modal-mask hidden"
+    >
+      <div class="modal">
+        <div class="modal-head">
+          <b>⚙ 设置</b
+          ><span
+            id="modalClose"
+            class="x"
+            >✕</span
+          >
+        </div>
+        <div class="modal-grid">
+          <label
+            >线程<input
+              id="setThreads"
+              type="number"
+              value="150"
+              min="1"
+              max="2000"
+          /></label>
+          <label
+            >延迟阈值<input
+              id="setLatency"
+              type="number"
+              value="220"
+              min="10"
+              max="5000"
+          /></label>
+          <label
+            >IPv4 采样<input
+              id="setV4"
+              type="number"
+              value="2"
+              min="1"
+              max="5"
+          /></label>
+          <label
+            >IPv6采样<input
+              id="setV6"
+              type="number"
+              value="200"
+              min="1"
+              max="2000"
+          /></label>
+          <label class="wide"
+            >导出格式
+            <select id="setFormat">
+              <option value="txt">TXT</option>
+              <option value="csv">CSV</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-foot">
+          <button
+            id="btnCancel"
+            class="btn btn-plain"
+          >
+            取消
+          </button>
+          <button
+            id="btnSave"
+            class="btn btn-primary"
+          >
+            保存
+          </button>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+name: Build and Package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            target: node24-win-x64
+            artifact_name: cf-scanner-windows-x64
+            output_file: cf-scanner.exe
+          - os: ubuntu-latest
+            target: node24-linux-x64
+            artifact_name: cf-scanner-linux-x64
+            output_file: cf-scanner-linux
+          - os: macos-latest
+            target: node24-macos-x64
+            artifact_name: cf-scanner-macos-x64
+            output_file: cf-scanner-macos
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 🛎️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🛠️ Install @yao-pkg/pkg globally
+        run: npm install -g @yao-pkg/pkg
+
+      - name: 🚀 Package application
+        run: pkg . --targets ${{ matrix.target }} --output ${{ matrix.output_file }}
+
+      - name: ⬆️ Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.output_file }}
+          retention-days: 30
